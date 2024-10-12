@@ -1,0 +1,35 @@
+{
+  "name": "vjudge",
+  "version": "0.0.0",
+  "description": "algo arena automation",
+  "main": "./out/index.js",
+  "type": "module",
+  "bin": {
+    "vjudge": "./out/index.js"
+  },
+  "scripts": {
+    "build:cli": "bun build ./index.ts --outdir ./out --target node --minify",
+    "build:ui": "cd .. && pnpm run build && cd core",
+    "dev": "npm run build:ui && bun run ./index.ts",
+    "prepublish": "npm run build:ui && npm run build:cli"
+  },
+  "keywords": [
+    "automation"
+  ],
+  "author": "github.com/michael-azogu",
+  "license": "MIT",
+  "dependencies": {
+    "@types/cookie-session": "^2.0.49",
+    "@types/express": "^5.0.0",
+    "@types/linkify-it": "^5.0.0",
+    "axios": "^1.7.7",
+    "cookie-session": "^2.1.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "linkify-it": "^5.0.0",
+    "oauth-1.0a": "^2.2.6",
+    "octokit": "^4.0.2",
+    "open": "^10.1.0",
+    "querystring": "^0.2.1"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": [
+      "ES2020"
+    ],
+    "resolveJsonModule": true,
+    "outDir": "./out",
+    "strict": true,
+    "sourceMap": true,
+  },
+  "exclude": [
+    "node_modules"
+  ],
+}

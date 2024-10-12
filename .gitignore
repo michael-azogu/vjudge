@@ -1,0 +1,11 @@
+*.txt
+*.env
+
+ffmpeg.ts
+npm-debug.log*
+pnpm-debug.log*
+
+**/node_modules
+
+.vscode/*
+!.vscode/extensions.json
