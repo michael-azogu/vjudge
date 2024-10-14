@@ -18,3 +18,24 @@ export type summary = {
   repo_name: string
   created_at: string
 }
+
+export type links = {
+  others: string[]
+  videos: string[]
+  sources: string[]
+  deploys: string[]
+}
+
+export type submission = {
+  uid: number
+  title: string
+  email?: string
+  github_username: string
+  twitter_username?: string
+  links: links
+  mentions: string[]
+  issue_url: string
+  issue_body: string
+  late: boolean
+  blurb: string
+}

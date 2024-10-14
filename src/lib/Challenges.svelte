@@ -24,7 +24,10 @@
   {/each}
 {:else}
   {#await rpc.get_challenge(selected.repo_name) then challenge}
-    <Judge {challenge} />
+    <Judge
+      {challenge}
+      repo={selected.repo_name}
+    />
   {/await}
 {/if}
 

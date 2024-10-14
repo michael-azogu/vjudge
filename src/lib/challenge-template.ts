@@ -37,7 +37,7 @@ function next_sunday() {
   )
 }
 
-const nth = ['Winner', '2nd', '3rd', '4th', '5th']
+export const nth = ['Winner', '2nd', '3rd', '4th', '5th']
 
 const place = ['The winner'].concat(
   ['second', 'third', 'fourth', 'fifth'].map((p) => `In ${p} place`)
@@ -54,15 +54,22 @@ export type winner = {
   demo_urls: string[]
 }
 
-const winner_string = (winners: winner[], prizes: number[]) =>
-  winners
-    .map(
-      (winner, i) =>
-        `* ${place[i]} for ${prizes[i]} is @${winner.github_username}! with ${
-          winner.title
-        }! ${winner.blurb} ${winner.issue_url}\n${winner.demo_urls.join('\n')}`
-    )
-    .join('\n\n')
+// TODO switch to gh.name not login
+export const verdict_string_list = (
+  winners: winner[],
+  prizes: number[],
+  ontwitter = false
+) =>
+  winners.map((winner, i) => {
+    const name = `${
+      winner.twitter_username && ontwitter
+        ? '@' + winner.twitter_username
+        : winner.github_username
+    }`
+    return i < prizes.length
+      ? `${place[i]} for $${prizes[i]} is ${name}! with ${winner.title}. ${winner.blurb} ${winner.issue_url}`
+      : `Honorable mention: ${winner.title} by ${name}. ${winner.blurb} ${winner.issue_url}`
+  })
 
 export const judged_readme = (
   readme: string,
@@ -70,12 +77,14 @@ export const judged_readme = (
   prizes: number[]
 ) =>
   readme.replace(
-    /(###\s*Prizes:)/,
-    `\n$### Winners:\n\n${winner_string(winners, prizes)}\n\n$1`
+    /###\s*Prizes:/,
+    // extract winner fn & use in preview
+    `\n### Winners:\n\n${verdict_string_list(winners, prizes)
+      // TODO post img/vid & get url
+      .map((w, i) => '* ' + w + `\n${winners[i].demo_urls.join('\n')}`)
+      .join('\n\n')
+      .replaceAll('$', '$$')}\n### Prizes:`
   )
-
-export const preview_readme_image = (readme: string, url: string) =>
-  readme.replace(/(<img[^>]*\bsrc=")[^"]*"/, `$1data:image/jpeg;base64,${url}"`)
 
 export const challenge_readme = (
   entry_no: number,
@@ -93,7 +102,7 @@ export const challenge_readme = (
 
 **${summary}.** ${description}
 
-<img alt="image" src="https://github.com/${org}/${gh_title}/blob/main/thumbnail">
+<img alt="image" src="https://raw.githubusercontent.com/${org}/${gh_title}/main/thumbnail">
 
 
 ### Prizes:
@@ -114,3 +123,6 @@ ${prizes.map((prize, i) => `* ${nth[i]}: $${prize}`).join('\n')}
 * It must contain a link with the source code
 `
 }
+
+export const readme_preview_with_image = (readme: string, url: string) =>
+  readme.replace(/(<img[^>]*\bsrc=")[^"]*"/, `$1data:image/jpeg;base64,${url}"`)

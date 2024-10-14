@@ -7,12 +7,25 @@
 
   let tw_access_token = localStorage.getItem('tw_access_token')
   let tw_access_token_secret = localStorage.getItem('tw_access_token_secret')
-  let tw_access_token_verifier = localStorage.getItem('tw_access_token_verifier')
+  let tw_access_token_verifier = localStorage.getItem(
+    'tw_access_token_verifier'
+  )
 
-  const send_tokens = () => [
-    rpc.set_gh_access_token(gh_access_token!),
-    rpc.set_tw_access_tokens(tw_access_token!, tw_access_token_secret!, tw_access_token_verifier!),
-  ]
+  const send_tokens = () => {
+    // i give up (for now...)
+    localStorage.removeItem('tw_access_token')
+    localStorage.removeItem('tw_access_token_secret')
+    localStorage.removeItem('tw_access_token_verifier')
+
+    return [
+      rpc.set_gh_access_token(gh_access_token!),
+      rpc.set_tw_access_tokens(
+        tw_access_token!,
+        tw_access_token_secret!,
+        tw_access_token_verifier!
+      ),
+    ]
+  }
 
   let active: 'none' | 'judge' | 'create' = 'none'
 </script>

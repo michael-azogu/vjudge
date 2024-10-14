@@ -14,7 +14,13 @@ import { log } from 'node:console'
 import type { Request } from 'express'
 import type { req } from './../types.js'
 
-import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET } from './env.js'
+import {
+  GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET,
+  TWITTER_CONSUMER_KEY,
+  TWITTER_CONSUMER_SECRET,
+} from './env.js'
+import { TwitterApi } from 'twitter-api-v2'
 
 const port = 5432
 const server_url = `http://localhost:${port}`
@@ -24,6 +30,7 @@ const server = express()
 server.use(
   cookie({
     name: 'session',
+    sameSite: 'none',
     keys: ['your-secret-key'],
     maxAge: 7 * 24 * 60 * 60 * 1000,
   })
@@ -31,7 +38,13 @@ server.use(
 server.use(express.json({ limit: '10mb' }))
 server.use(express.static(path.join(__dirname, 'ui')))
 
+let once = false
 server.get('/', (_, res) => {
+  if (once) {
+    log('auth is weird cant reload page, weird things will happen')
+    process.exit(0)
+  }
+  once = true
   res.sendFile(path.join(__dirname, 'ui', 'index.html'))
 })
 
@@ -97,9 +110,10 @@ const session: OAuthSession = {
   oauth_token_secret: '',
 }
 
-server.get('/auth/twitter', async (req, respond) => {
+server.get('/auth/twitter', async (_, respond) => {
   const { url, oauth_token, oauth_token_secret } =
     await tw_client.$.generateAuthLink(server_url + tw_callback_url, {
+      linkMode: 'authorize',
       authAccessType: 'write',
     })
 

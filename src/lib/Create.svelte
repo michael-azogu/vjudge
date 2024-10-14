@@ -7,7 +7,7 @@
 
   import {
     challenge_readme,
-    preview_readme_image,
+    readme_preview_with_image,
   } from './challenge-template'
 
   let loading = true
@@ -84,7 +84,9 @@
   <textarea bind:value={description} />
 
   <br />
+
   <!-- make sure each is lower/equal prize to the last -->
+  <!-- ! TODO just bind -->
   1st prize:
   <input
     type="number"
@@ -114,18 +116,20 @@
   <button
     disabled={!image}
     on:click={async () => {
-      repo_url = await rpc.create_challenge_repo(gh_title, readme, image)
+      if (image) {
+        repo_url = await rpc.create_challenge_repo(gh_title, readme, image)
 
-      tweet_url = await rpc.tweet_new_challenge([
-        { text: description, thumbnail: image },
-        {
-          text: tweet_footer,
-          repo_link: `https://github.com/${org}/${gh_title}`,
-        },
-      ])
+        tweet_url = await rpc.tweet_new_challenge([
+          { text: description, thumbnail: image },
+          {
+            text: tweet_footer,
+            repo_link: `https://github.com/${org}/${gh_title}`,
+          },
+        ])
 
-      window.open(repo_url)
-      window.open(tweet_url)
+        window.open(repo_url)
+        window.open(tweet_url)
+      }
     }}>create repo & post challenge</button
   >
 
@@ -137,7 +141,7 @@
   {/if}
 
   <!-- at the side scrolling -->
-  {#await marked(preview_readme_image(readme, image)) then md}
+  {#await marked(readme_preview_with_image(readme, image)) then md}
     {@html DOMPurify.sanitize(md)}
   {/await}
 {/if}

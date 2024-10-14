@@ -2,7 +2,7 @@ import { App } from 'octokit'
 import linkit from 'linkify-it'
 import { log } from 'node:console'
 import { tw_client } from './tw.js'
-import type { summary } from '../types.js'
+import type { links, submission, summary } from '../types.js'
 import { deploy_hosts, source_hosts, video_exts, video_hosts } from './hosts.js'
 
 import {
@@ -36,6 +36,8 @@ const pause = (ms: number) => new Promise((f) => setTimeout(f, ms))
 
 export default {
   set_gh_access_token: async (token: string) => {
+    if (gh_access_token) return
+
     gh_access_token = token
     const app = new App({
       userAgent: 'vjudge',
@@ -62,6 +64,14 @@ export default {
     verifier: string
   ) => {
     try {
+      if (
+        tw_access_token &&
+        tw_access_token_secret &&
+        tw_access_token_verifier
+      ) {
+        return
+      }
+
       tw_access_token = token
       tw_access_token_secret = secret
       tw_access_token_verifier = verifier
@@ -97,6 +107,22 @@ export default {
         .map((repo) => +repo.name.match(/\d+/)![0])
         .sort((a, b) => b - a)[0] + 1
     )
+  },
+
+  post_final_verdict: async (repo: string, updated_readme: string) => {
+    const readme_blob = await gh.rest.repos.getReadme({
+      owner: ORG,
+      repo,
+    })
+
+    await gh.rest.repos.createOrUpdateFileContents({
+      sha: readme_blob.data.sha,
+      owner: ORG,
+      repo,
+      path: 'README.md',
+      message: 'instructions',
+      content: Buffer.from(updated_readme).toString('base64'),
+    })
   },
 
   tweet_new_challenge: async (
@@ -135,47 +161,6 @@ export default {
     }`
   },
 
-  create_challenge_repo: async (
-    title: string,
-    readme: string,
-    image: string
-  ) => {
-    const {
-      data: { html_url },
-    } = await gh.rest.repos.createInOrg({
-      org: ORG,
-      name: title,
-      auto_init: true,
-      visibility: 'public',
-    })
-
-    await pause(2000)
-
-    await gh.rest.repos.createOrUpdateFileContents({
-      owner: ORG,
-      repo: title,
-      path: 'thumbnail',
-      message: 'uploading thumbnail for readme',
-      content: image,
-    })
-
-    const readme_blob = await gh.rest.repos.getReadme({
-      owner: ORG,
-      repo: title,
-    })
-
-    await gh.rest.repos.createOrUpdateFileContents({
-      sha: readme_blob.data.sha,
-      owner: ORG,
-      repo: title,
-      path: 'README.md',
-      message: 'instructions',
-      content: Buffer.from(readme).toString('base64'),
-    })
-
-    return html_url
-  },
-
   get_challenge: async (repo_name: string) => {
     const readme = await gh.rest.repos.getReadme({
       owner: ORG,
@@ -186,7 +171,7 @@ export default {
     const content = Buffer.from(readme.data.content, 'base64').toString('utf-8')
 
     // TODO fix technique
-    const deadline = parse_deadline(content)
+    // const deadline = parse_deadline(content)
 
     const prizes = [
       ...content
@@ -233,28 +218,10 @@ export default {
       sort: 'updated',
     })
 
-    type links = {
-      others: string[]
-      videos: string[]
-      sources: string[]
-      deploys: string[]
-    }
-
-    type submission = {
-      uid: number
-      title: string
-      email?: string
-      github_username: string
-      twitter_username?: string
-      links: links
-      mentions: string[]
-      issue_url: string
-      issue_body: string
-      late: boolean
-    }
-
     const submissions: Array<submission> = await Promise.all(
       issues.data.map<Promise<submission>>(async (issue) => {
+        const issue_body = !!issue.body ? issue.body : ''
+
         const {
           data: { twitter_username },
         } = await gh.rest.users.getByUsername({ username: issue.user!.login })
@@ -269,7 +236,7 @@ export default {
         }
 
         // cant be sure gh asset is video or img
-        ;(link_parse.match(issue.body!) || []).map(({ url }) => {
+        ;(link_parse.match(issue_body) || []).map(({ url }) => {
           if (
             belongs(url, video_hosts) ||
             video_exts.some((ext) => url.endsWith(`.${ext}`))
@@ -292,9 +259,9 @@ export default {
          * select which (if many) to use in post & update (then start download)
          */
 
-        new Date(issue.updated_at)
         const submission_date = new Date(issue.created_at)
-        const late = submission_date > deadline
+        // new Date(issue.updated_at)
+        // const late = submission_date > deadline
 
         return {
           uid: issue.number,
@@ -302,11 +269,13 @@ export default {
           email: issue.user!.email,
           github_username: issue.user!.login,
           twitter_username,
+          // make it a rule to upload the demo video to the gh issue & only one video
           links,
-          mentions: parse_mentions(issue.body!),
+          mentions: parse_mentions(issue_body),
           issue_url: issue.html_url,
-          issue_body: issue.body,
-          late,
+          issue_body: issue_body,
+          // late,
+          blurb: '',
         } as submission
       })
     )
@@ -314,9 +283,10 @@ export default {
     return {
       details: {
         // description,
+        readme: content,
         prizes,
         thumbnail_url,
-        deadline: deadline.toUTCString(),
+        // deadline: deadline.toUTCString(),
       },
       submissions,
     }
@@ -357,5 +327,46 @@ export default {
         } as summary
       })
       .sort((a, b) => b.entry_no - a.entry_no)
+  },
+
+  create_challenge_repo: async (
+    title: string,
+    readme: string,
+    image: string
+  ) => {
+    const {
+      data: { html_url },
+    } = await gh.rest.repos.createInOrg({
+      org: ORG,
+      name: title,
+      auto_init: true,
+      visibility: 'public',
+    })
+
+    await pause(2000)
+
+    await gh.rest.repos.createOrUpdateFileContents({
+      owner: ORG,
+      repo: title,
+      path: 'thumbnail',
+      message: 'uploading thumbnail for readme',
+      content: image,
+    })
+
+    const readme_blob = await gh.rest.repos.getReadme({
+      owner: ORG,
+      repo: title,
+    })
+
+    await gh.rest.repos.createOrUpdateFileContents({
+      sha: readme_blob.data.sha,
+      owner: ORG,
+      repo: title,
+      path: 'README.md',
+      message: 'instructions',
+      content: Buffer.from(readme).toString('base64'),
+    })
+
+    return html_url
   },
 }
