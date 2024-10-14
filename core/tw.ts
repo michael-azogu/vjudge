@@ -2,18 +2,27 @@ import qs from 'querystring'
 import OAuth from 'oauth-1.0a'
 import { createHmac } from 'crypto'
 import axios, { AxiosResponse, Method } from 'axios'
+import { TwitterApi } from 'twitter-api-v2'
+import { TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET } from './env.js'
 
-export const oauth = new OAuth({
+export let tw_client = {
+  $: new TwitterApi({
+    appKey: TWITTER_CONSUMER_KEY,
+    appSecret: TWITTER_CONSUMER_SECRET,
+  }),
+}
+
+const oauth = new OAuth({
   signature_method: 'HMAC-SHA1',
   hash_function: (baseString, key) =>
     createHmac('sha1', key).update(baseString).digest('base64'),
   consumer: {
-    key: process.env.TWITTER_CONSUMER_KEY!,
-    secret: process.env.TWITTER_CONSUMER_SECRET!,
+    key: TWITTER_CONSUMER_KEY,
+    secret: TWITTER_CONSUMER_SECRET,
   },
 })
 
-export const twitter_client = (
+const twitter_client = (
   tw_access_token: string,
   tw_access_token_secret: string
 ) => {

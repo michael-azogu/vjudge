@@ -30,6 +30,7 @@
     "oauth-1.0a": "^2.2.6",
     "octokit": "^4.0.2",
     "open": "^10.1.0",
-    "querystring": "^0.2.1"
+    "querystring": "^0.2.1",
+    "twitter-api-v2": "^1.18.0"
   }
 }

@@ -19,7 +19,11 @@
     "vite": "^5.4.8"
   },
   "dependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/marked": "^6.0.0",
     "date-fns": "^4.1.0",
-    "date-fns-tz": "^3.2.0"
+    "date-fns-tz": "^3.2.0",
+    "dompurify": "^3.1.7",
+    "marked": "^14.1.2"
   }
 }
