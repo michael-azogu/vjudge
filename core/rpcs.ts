@@ -241,7 +241,7 @@ export default {
             belongs(url, video_hosts) ||
             video_exts.some((ext) => url.endsWith(`.${ext}`))
           ) {
-            links.videos.push(url)
+            links.videos.push({ url, include: false })
           } else if (belongs(url, source_hosts)) {
             links.sources.push(url)
           } else if (belongs(url, deploy_hosts)) {

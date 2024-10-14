@@ -21,7 +21,7 @@ export type summary = {
 
 export type links = {
   others: string[]
-  videos: string[]
+  videos: { url: string; include: boolean }[]
   sources: string[]
   deploys: string[]
 }

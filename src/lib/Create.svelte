@@ -73,12 +73,14 @@
     type="text"
     bind:value={title}
   />
+  <br />
 
   summary:
   <input
     type="text"
     bind:value={summary}
   />
+  <br />
 
   description:
   <textarea bind:value={description} />
@@ -92,26 +94,31 @@
     type="number"
     on:change={(e) => (prizes = [+e.currentTarget.value, ...prizes.slice(1)])}
   />
+  <br />
   2nd prize:
   <input
     type="number"
     on:change={(e) =>
       (prizes = [prizes[0], +e.currentTarget.value, ...prizes.slice(2)])}
   />
+  <br />
   3rd prize:
   <input
     type="number"
     on:change={(e) =>
       (prizes = [...prizes.slice(0, 2), +e.currentTarget.value])}
   />
+  <br />
 
   <input
     type="file"
     on:change={handle_image}
   />
+  <br />
 
   twitter post footer:
   <textarea bind:value={tweet_footer} />
+  <br />
 
   <button
     disabled={!image}

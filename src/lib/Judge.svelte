@@ -45,7 +45,9 @@
         github_username: w.github_username,
         twitter_username: w.twitter_username,
         issue_url: w.issue_url,
-        demo_urls: w.links.videos.concat(w.links.deploys),
+        demo_urls: w.links.videos
+          .filter((s) => s.include)
+          .map(({ url }) => url), //.concat(w.links.deploys),
       }))
       .concat(
         honorables.map((h) => ({
@@ -54,7 +56,9 @@
           title: h.title,
           issue_url: h.issue_url,
           twitter_username: h.twitter_username,
-          demo_urls: h.links.videos.concat(h.links.deploys),
+          demo_urls: h.links.videos
+            .filter((s) => s.include)
+            .map(({ url }) => url), //.concat(h.links.deploys),
         }))
       ),
     challenge.details.prizes
@@ -75,6 +79,7 @@
 <button on:click={() => rpc.post_final_verdict(repo, updated_readme)}>
   Post Verdict</button
 >
+<br />
 
 {#each submissions as submission, i}
   <input
@@ -86,6 +91,14 @@
     >#{submission.uid}</a
   >
   <textarea bind:value={submission.blurb}></textarea>
+
+  {#each submission.links.videos as video}
+    <input
+      type="checkbox"
+      bind:checked={video.include}
+    /><a href={video.url}>{video.url.replaceAll(/https?:\/\/(www\.)?/g, '')}</a>
+    <br />
+  {/each}
 
   {#if i >= prizes.length}
     <input
