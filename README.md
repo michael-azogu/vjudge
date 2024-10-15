@@ -13,8 +13,6 @@ npm run build:cli && npm link
 vjudge
 ```
 
-dm me for env secrets
-
 ```toml
 ORG=
 
