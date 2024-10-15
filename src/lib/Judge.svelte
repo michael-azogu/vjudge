@@ -1,6 +1,11 @@
 <script lang="ts">
   import rpc from '../rpc'
-  import { judged_readme, nth, type winner } from './challenge-template'
+  import {
+    judged_readme,
+    nth,
+    verdict_string_list,
+    type winner,
+  } from './challenge-template'
   import type { ReturnType, submission, UnwrapPromise } from '../../types'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
@@ -26,8 +31,32 @@
     )
   }
 
+  // allow giving less number of winners but atleast one
+  // but cant pick less & talk about honorable mentions
   $: winners = submissions.slice(0, prizes.length)
   $: honorables = submissions.filter((_, i) => honorable_indexes.includes(i))
+  $: chosen = winners
+    .map((w) => ({
+      blurb: w.blurb,
+      title: w.title,
+      // multiple people ?
+      github_username: w.github_username,
+      twitter_username: w.twitter_username,
+      issue_url: w.issue_url,
+      demo_urls: w.links.videos.filter((s) => s.include).map(({ url }) => url), //.concat(w.links.deploys),
+    }))
+    .concat(
+      honorables.map((h) => ({
+        blurb: h.blurb,
+        github_username: h.github_username,
+        title: h.title,
+        issue_url: h.issue_url,
+        twitter_username: h.twitter_username,
+        demo_urls: h.links.videos
+          .filter((s) => s.include)
+          .map(({ url }) => url), //.concat(h.links.deploys),
+      }))
+    )
 
   function handle_honorable(i: number, checked: boolean) {
     honorable_indexes = checked
@@ -37,46 +66,28 @@
 
   $: updated_readme = judged_readme(
     challenge.details.readme,
-    winners
-      .map((w) => ({
-        blurb: w.blurb,
-        title: w.title,
-        // multiple people ?
-        github_username: w.github_username,
-        twitter_username: w.twitter_username,
-        issue_url: w.issue_url,
-        demo_urls: w.links.videos
-          .filter((s) => s.include)
-          .map(({ url }) => url), //.concat(w.links.deploys),
-      }))
-      .concat(
-        honorables.map((h) => ({
-          blurb: h.blurb,
-          github_username: h.github_username,
-          title: h.title,
-          issue_url: h.issue_url,
-          twitter_username: h.twitter_username,
-          demo_urls: h.links.videos
-            .filter((s) => s.include)
-            .map(({ url }) => url), //.concat(h.links.deploys),
-        }))
-      ),
+    chosen,
     challenge.details.prizes
   )
 
-  const tweet_footer = "If that was fun for you, try this week's challenge!"
-
   // iframe the issue
-
   let closing_remarks = '🧵'
-  // TODO fuzzy compare readme desc to tweet content
-  let original_tweet_url
-  // the toplevel tweet whose first subtweet contains a link to a weekly-challenge-$
-  let this_weeks_challenge
-  // if any, is ^ but challenge number is +1 of currently judged
+  let tweet_footer = "If that was fun for you, try this week's challenge!"
 </script>
 
-<button on:click={() => rpc.post_final_verdict(repo, updated_readme)}>
+<button
+  on:click={() =>
+    rpc.post_final_verdict(repo, updated_readme, {
+      tweet_footer,
+      closing_remarks,
+      // prefer create new week challenge before judging last one
+      verdicts: verdict_string_list(chosen, prizes, true).map((blurb, i) => ({
+        blurb,
+        // cant have more than four prefer just one
+        media_urls: chosen[i].demo_urls,
+      })),
+    })}
+>
   Post Verdict</button
 >
 <br />

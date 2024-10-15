@@ -67,8 +67,8 @@ export const verdict_string_list = (
         : winner.github_username
     }`
     return i < prizes.length
-      ? `${place[i]} for $${prizes[i]} is ${name}! with ${winner.title}. ${winner.blurb} ${winner.issue_url}`
-      : `Honorable mention: ${winner.title} by ${name}. ${winner.blurb} ${winner.issue_url}`
+      ? `${place[i]} for $${prizes[i]} is ${name}! with "${winner.title}". ${winner.blurb} ${winner.issue_url}`
+      : `Honorable mention goes to "${winner.title}" by ${name}. ${winner.blurb} ${winner.issue_url}`
   })
 
 export const judged_readme = (

@@ -1,3 +1,4 @@
+import { nth } from './../src/lib/challenge-template.js'
 import { App } from 'octokit'
 import linkit from 'linkify-it'
 import { log } from 'node:console'
@@ -21,6 +22,9 @@ import {
   TwitterApi,
   TwitterApiReadWrite,
 } from 'twitter-api-v2'
+import { download, download_from_youtube } from './video.js'
+import { readFileSync } from 'node:fs'
+import { fileTypeFromBuffer } from 'file-type'
 
 let gh: App['octokit']
 let gh_access_token = ''
@@ -109,12 +113,21 @@ export default {
     )
   },
 
-  post_final_verdict: async (repo: string, updated_readme: string) => {
+  post_final_verdict: async (
+    repo: string,
+    updated_readme: string,
+    tweet_data: {
+      given_tweet_to_quote?: string
+      closing_remarks: string
+      tweet_footer: string
+      verdicts: { blurb: string; media_urls: string[] }[]
+    }
+  ) => {
+    log('getting ready to update readme with verdict')
     const readme_blob = await gh.rest.repos.getReadme({
       owner: ORG,
       repo,
     })
-
     await gh.rest.repos.createOrUpdateFileContents({
       sha: readme_blob.data.sha,
       owner: ORG,
@@ -123,6 +136,84 @@ export default {
       message: 'instructions',
       content: Buffer.from(updated_readme).toString('base64'),
     })
+    log('readme updated')
+
+    // TODO return gh readmeurl to check if success
+
+    const user_id = (await tw.v2.me()).data.id
+
+    // 3wks ago for leeway
+    const three_weeks_ago = new Date()
+    three_weeks_ago.setDate(three_weeks_ago.getDate() - 7 * 3)
+
+    const { tweets } = await tw.v2.search(repo, {
+      start_time: three_weeks_ago.toISOString(),
+      sort_order: 'recency',
+      max_results: 30,
+      expansions: 'in_reply_to_user_id',
+    })
+    // the least recent match
+    tweets.map((f) => {
+      f.id
+      f.in_reply_to_user_id
+    })
+
+    let original_tweet_url
+
+    log('getting ready to tweet')
+    const thread: SendTweetV2Params[] = await Promise.all(
+      tweet_data.verdicts.map(async (v, i) => {
+        const downloaded_media_paths = v.media_urls
+          .map((url, j) => {
+            const path = `video-0${j + 1}-for-${nth[i]})}`
+            try {
+              url.includes('youtube') || url.includes('youtu.be')
+                ? download_from_youtube(url, path)
+                : download(url, path)
+              return path
+            } catch {
+              return ''
+            }
+          })
+          .filter(Boolean)
+
+        let media_ids = (await Promise.all(
+          downloaded_media_paths.slice(0, 4).map(async (path) => {
+            const file = readFileSync(path)
+            return tw.v1.uploadMedia(file, {
+              mimeType: (await fileTypeFromBuffer(file))?.mime || '',
+              // longVideo: file.byteLength > 12 * 1024 * 1024,
+            })
+          })
+        )) as NonNullable<SendTweetV2Params['media']>['media_ids']
+
+        return {
+          text: v.blurb,
+          media: { media_ids },
+        }
+      })
+    )
+
+    const twurl = `https://twitter.com/${
+      (await tw.v2.me()).data.username
+    }/status/${(await tw.v2.tweetThread(thread))[0].data.id}`
+
+    log('tweet completed')
+
+    // the toplevel tweet whose first subtweet contains a link to a weekly-challenge-$
+    // let this_weeks_challenge =
+    // if any, is ^ but challenge number is +1 of currently judged
+    // const { data } = await gh.rest.repos.listForOrg({
+    //   org: ORG,
+    //   per_page: 500,
+    // })
+
+    // return (
+    //   data
+    //     .filter((repo) => repo.name.startsWith('weekly-challenge'))
+    //     .map((repo) => +repo.name.match(/\d+/)![0])
+    //     .sort((a, b) => b - a)[0] + 1
+    // )
   },
 
   tweet_new_challenge: async (
@@ -229,12 +320,13 @@ export default {
         const link_parse = new linkit()
 
         const links: links = {
-          sources: [],
-          videos: [],
-          deploys: [],
           others: [],
+          videos: [],
+          sources: [],
+          deploys: [],
         }
 
+        // keep link to ghrepo under the issue creators uname
         // cant be sure gh asset is video or img
         ;(link_parse.match(issue_body) || []).map(({ url }) => {
           if (
