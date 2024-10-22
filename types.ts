@@ -19,11 +19,12 @@ export type summary = {
   created_at: string
 }
 
-export type links = {
-  others: string[]
-  videos: { url: string; include: boolean }[]
-  sources: string[]
-  deploys: string[]
+export type links<d = { url: string; include: boolean }[]> = {
+  others: d
+  /* add images */
+  videos: d
+  sources: d
+  deploys: d
 }
 
 export type submission = {

@@ -5,13 +5,13 @@
   "main": "./out/index.js",
   "type": "module",
   "bin": {
-    "vjudge": "./out/index.js"
+    "vjudge": "./out/core/index.js"
   },
   "scripts": {
-    "build:cli": "bun build ./index.ts --outdir ./out --target node --minify",
+    "dev": "npm run build:ui && tsc && node ./out/index.js",
+    "build": "npm run build:ui && npm run build:cli",
     "build:ui": "cd .. && pnpm run build && cd core",
-    "dev": "npm run build:ui && bun run ./index.ts",
-    "prepublish": "npm run build:ui && npm run build:cli"
+    "build:cli": "tsc"
   },
   "keywords": [
     "automation"

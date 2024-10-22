@@ -66,6 +66,7 @@ export const verdict_string_list = (
         ? '@' + winner.twitter_username
         : winner.github_username
     }`
+    winner.demo_urls //!
     return i < prizes.length
       ? `${place[i]} for $${prizes[i]} is ${name}! with "${winner.title}". ${winner.blurb} ${winner.issue_url}`
       : `Honorable mention goes to "${winner.title}" by ${name}. ${winner.blurb} ${winner.issue_url}`

@@ -1,20 +1,34 @@
 # Setup
 
-pnpm & bun required (or modify pkg.json scripts)
-
-<!-- ffmpeg system dependency -->
+ffmpeg & ytdl dependencies
 
 ```bash
 git clone https://github.com/michael-azogu/vjudge.git
-cd vjudge && pnpm i
-cd core && touch .env
+
+cd vjudge
+
+# no need to run the vite app
+pnpm i
+
+cd core
+
+npm i
+
 # fill in the .env file
-npm run build:cli && npm link
+touch .env
+
+npm run build
+
+npm link
+
 vjudge
+
+# if permission denied
+chmod +x /path/to/bin/vjudge
 ```
 
 ```toml
-ORG=
+ORG=Algo-Arena
 
 TWITTER_APP_ID=
 TWITTER_CONSUMER_KEY=

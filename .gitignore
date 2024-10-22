@@ -1,6 +1,9 @@
 *.txt
 *.env
 
+core/out
+core/downloads
+
 ffmpeg.ts
 npm-debug.log*
 pnpm-debug.log*

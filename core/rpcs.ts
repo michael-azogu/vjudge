@@ -117,103 +117,115 @@ export default {
     repo: string,
     updated_readme: string,
     tweet_data: {
-      given_tweet_to_quote?: string
+      given_tweet_to_quote: string
       closing_remarks: string
       tweet_footer: string
-      verdicts: { blurb: string; media_urls: string[] }[]
+      verdicts: {
+        blurb: string
+        media_urls: string[]
+      }[]
     }
   ) => {
-    log('getting ready to update readme with verdict')
+    log('updating readme with verdict...')
     const readme_blob = await gh.rest.repos.getReadme({
       owner: ORG,
       repo,
     })
+    // on gh place attachment link & others but download & commit yt videos.
+    // for images on gh paste, with mimetype check use imgsrc=
+    // on tw all vids/imgs included need to be uploaded
     await gh.rest.repos.createOrUpdateFileContents({
       sha: readme_blob.data.sha,
       owner: ORG,
       repo,
       path: 'README.md',
-      message: 'instructions',
+      message: 'update with verdict',
       content: Buffer.from(updated_readme).toString('base64'),
     })
-    log('readme updated')
-
-    // TODO return gh readmeurl to check if success
-
-    const user_id = (await tw.v2.me()).data.id
+    log('readme updated.')
 
     // 3wks ago for leeway
     const three_weeks_ago = new Date()
     three_weeks_ago.setDate(three_weeks_ago.getDate() - 7 * 3)
 
-    const { tweets } = await tw.v2.search(repo, {
-      start_time: three_weeks_ago.toISOString(),
-      sort_order: 'recency',
-      max_results: 30,
-      expansions: 'in_reply_to_user_id',
-    })
-    // the least recent match
-    tweets.map((f) => {
-      f.id
-      f.in_reply_to_user_id
-    })
-
-    let original_tweet_url
+    // ! $500/month to just search the past week. $5k/m for more than a week
+    let original_tweet_url = tweet_data.given_tweet_to_quote
 
     log('getting ready to tweet')
-    const thread: SendTweetV2Params[] = await Promise.all(
-      tweet_data.verdicts.map(async (v, i) => {
-        const downloaded_media_paths = v.media_urls
-          .map((url, j) => {
-            const path = `video-0${j + 1}-for-${nth[i]})}`
-            try {
-              url.includes('youtube') || url.includes('youtu.be')
-                ? download_from_youtube(url, path)
-                : download(url, path)
-              return path
-            } catch {
-              return ''
-            }
-          })
-          .filter(Boolean)
 
-        let media_ids = (await Promise.all(
-          downloaded_media_paths.slice(0, 4).map(async (path) => {
-            const file = readFileSync(path)
-            return tw.v1.uploadMedia(file, {
-              mimeType: (await fileTypeFromBuffer(file))?.mime || '',
-              // longVideo: file.byteLength > 12 * 1024 * 1024,
-            })
-          })
-        )) as NonNullable<SendTweetV2Params['media']>['media_ids']
+    const thread: SendTweetV2Params[] = [
+      { text: tweet_data.closing_remarks + original_tweet_url },
+    ]
 
-        return {
-          text: v.blurb,
-          media: { media_ids },
+    for (let i = 0; i < tweet_data.verdicts.length; i++) {
+      const v = tweet_data.verdicts[i]
+      const downloaded_media_paths = []
+
+      for (let j = 0; j < v.media_urls.length; j++) {
+        const url = v.media_urls[j]
+        const path = `0${j + 1}-for-${nth[i]}`
+
+        try {
+          log('downloading', url)
+          if (url.includes('youtube') || url.includes('youtu.be')) {
+            const downloadedPath = await download_from_youtube(url, path)
+            downloaded_media_paths.push(downloadedPath)
+          } else {
+            const downloadedPath = await download(url, path)
+            downloaded_media_paths.push(downloadedPath)
+          }
+        } catch {
+          console.log('download error')
         }
-      })
-    )
+      }
 
-    const twurl = `https://twitter.com/${
+      log(`uploading media to twitter`)
+      const media_ids = []
+      for (let k = 0; k < downloaded_media_paths.slice(0, 4).length; k++) {
+        const path = downloaded_media_paths[k]
+        const file = readFileSync(path)
+        const mimeType = (await fileTypeFromBuffer(file))?.mime
+
+        try {
+          const media_id = await tw.v1.uploadMedia(file, {
+            // mimeType,
+            longVideo: true, // ?
+          })
+
+          log(`done uploading ${path} to twitter`)
+          media_ids.push(media_id)
+        } catch (e) {
+          console.log('tw upload error', e)
+        }
+      }
+
+      let tweet: SendTweetV2Params = {
+        text: v.blurb,
+      }
+
+      if (media_ids.length > 0) {
+        tweet.media = {
+          media_ids: media_ids as NonNullable<
+            SendTweetV2Params['media']
+          >['media_ids'],
+        }
+      }
+
+      thread.push(tweet)
+      log('\n  next verdict \n')
+    }
+
+    thread.push({
+      text: tweet_data.tweet_footer + ' ', // + (this_weeks_challenge || ''),
+    })
+
+    const twitter_url = `https://twitter.com/${
       (await tw.v2.me()).data.username
     }/status/${(await tw.v2.tweetThread(thread))[0].data.id}`
 
-    log('tweet completed')
+    log('tweet posted')
 
-    // the toplevel tweet whose first subtweet contains a link to a weekly-challenge-$
-    // let this_weeks_challenge =
-    // if any, is ^ but challenge number is +1 of currently judged
-    // const { data } = await gh.rest.repos.listForOrg({
-    //   org: ORG,
-    //   per_page: 500,
-    // })
-
-    // return (
-    //   data
-    //     .filter((repo) => repo.name.startsWith('weekly-challenge'))
-    //     .map((repo) => +repo.name.match(/\d+/)![0])
-    //     .sort((a, b) => b - a)[0] + 1
-    // )
+    return { twitter_url }
   },
 
   tweet_new_challenge: async (
@@ -230,12 +242,10 @@ export default {
   ) => {
     const [{ text: header, thumbnail }, { text: footer, repo_link }] = tweets
 
-    const thumbnail_id = await tw.v1.uploadMedia(
-      Buffer.from(thumbnail, 'base64'),
-      {
-        mimeType: 'image/jpeg',
-      }
-    )
+    const buffer = Buffer.from(thumbnail, 'base64')
+    const thumbnail_id = await tw.v1.uploadMedia(buffer, {
+      mimeType: (await fileTypeFromBuffer(buffer))?.mime,
+    })
 
     const thread: SendTweetV2Params[] = [
       {
@@ -335,11 +345,11 @@ export default {
           ) {
             links.videos.push({ url, include: false })
           } else if (belongs(url, source_hosts)) {
-            links.sources.push(url)
+            links.sources.push({ url, include: false })
           } else if (belongs(url, deploy_hosts)) {
-            links.deploys.push(url)
+            links.deploys.push({ url, include: false })
           } else {
-            links.others.push(url)
+            links.others.push({ url, include: false })
           }
         })
         // ! fallbacks

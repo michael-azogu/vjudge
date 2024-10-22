@@ -1,12 +1,7 @@
 <script lang="ts">
   import rpc from '../rpc'
-  import {
-    judged_readme,
-    nth,
-    verdict_string_list,
-    type winner,
-  } from './challenge-template'
-  import type { ReturnType, submission, UnwrapPromise } from '../../types'
+  import { judged_readme, verdict_string_list } from './challenge-template'
+  import type { links, ReturnType, UnwrapPromise } from '../../types'
   import { marked } from 'marked'
   import DOMPurify from 'dompurify'
 
@@ -35,6 +30,12 @@
   // but cant pick less & talk about honorable mentions
   $: winners = submissions.slice(0, prizes.length)
   $: honorables = submissions.filter((_, i) => honorable_indexes.includes(i))
+
+  const include = (l: links) =>
+    Object.values(l)
+      .flat()
+      .filter((s) => s.include)
+
   $: chosen = winners
     .map((w) => ({
       blurb: w.blurb,
@@ -43,7 +44,7 @@
       github_username: w.github_username,
       twitter_username: w.twitter_username,
       issue_url: w.issue_url,
-      demo_urls: w.links.videos.filter((s) => s.include).map(({ url }) => url), //.concat(w.links.deploys),
+      demo_urls: include(w.links).map(({ url }) => url),
     }))
     .concat(
       honorables.map((h) => ({
@@ -52,9 +53,7 @@
         title: h.title,
         issue_url: h.issue_url,
         twitter_username: h.twitter_username,
-        demo_urls: h.links.videos
-          .filter((s) => s.include)
-          .map(({ url }) => url), //.concat(h.links.deploys),
+        demo_urls: include(h.links).map(({ url }) => url),
       }))
     )
 
@@ -70,21 +69,25 @@
     challenge.details.prizes
   )
 
-  // iframe the issue
   let closing_remarks = '🧵'
-  let tweet_footer = "If that was fun for you, try this week's challenge!"
+  let tweet_footer = "If that was fun for you, try this week's challenge! (paste url)"
+  let original_tweet_link = 'https://twitter.com/{user}/{status}/{id}'
 </script>
 
+<!-- throttle -->
 <button
   on:click={() =>
     rpc.post_final_verdict(repo, updated_readme, {
       tweet_footer,
       closing_remarks,
+      given_tweet_to_quote: original_tweet_link,
       // prefer create new week challenge before judging last one
       verdicts: verdict_string_list(chosen, prizes, true).map((blurb, i) => ({
         blurb,
         // cant have more than four prefer just one
-        media_urls: chosen[i].demo_urls,
+        media_urls: submissions[i].links.videos
+          .filter(({ include }) => include)
+          .map(({ url }) => url),
       })),
     })}
 >
@@ -98,16 +101,15 @@
     bind:value={submission.title}
   />
   <!-- intl conject ,and mentions -->
-  by @{submission.github_username} issue<a href={submission.issue_url}
-    >#{submission.uid}</a
-  >
+  by @{submission.github_username}
+  <b>issue<a href={submission.issue_url}>#{submission.uid}</a></b>
   <textarea bind:value={submission.blurb}></textarea>
 
-  {#each submission.links.videos as video}
+  {#each Object.values(submission.links).flat() as url}
     <input
       type="checkbox"
-      bind:checked={video.include}
-    /><a href={video.url}>{video.url.replaceAll(/https?:\/\/(www\.)?/g, '')}</a>
+      bind:checked={url.include}
+    /><a href={url.url}>{url.url.replaceAll(/https?:\/\/(www\.)?/g, '')}</a>
     <br />
   {/each}
 
@@ -129,6 +131,23 @@
 {/each}
 
 <br />
+
+original tweet link
+<a
+  href="https://x.com/search?q=(from%3AVjeux)%20filter%3Areplies%20%22github.com%22&src=typed_query&f=live"
+  >search here</a
+>
+<input
+  type="text"
+  bind:value={original_tweet_link}
+/>
+<br />
+closing
+<textarea bind:value={closing_remarks}></textarea>
+<br />
+tweet footer
+<textarea bind:value={tweet_footer}></textarea>
+
 <!-- ! only show winner section string -->
 <!-- TODO switch to remark-gfm -->
 {#await marked(updated_readme) then md}

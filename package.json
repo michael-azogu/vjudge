@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build  && rm -rf core/ui/ && mkdir core/ui && mv -f dist/* core/ui && rmdir dist",
     "preview": "vite preview",
+    "build": "vite build && rm -rf core/out/ui/ && mkdir core/out && mkdir core/out/ui && mv -f dist/* core/out/ui && rmdir dist",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json"
   },
   "devDependencies": {

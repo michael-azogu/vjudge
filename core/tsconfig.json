@@ -2,10 +2,11 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "target": "ES2022",
+    "target": "ESNext",
     "module": "NodeNext",
     "lib": [
-      "ES2020"
+      "ES2021",
+      "ESNext"
     ],
     "resolveJsonModule": true,
     "outDir": "./out",

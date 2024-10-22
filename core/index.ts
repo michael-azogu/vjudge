@@ -8,7 +8,7 @@ import express from 'express'
 import { tw_client } from './tw.js'
 import cookie from 'cookie-session'
 
-import path from 'node:path'
+import path, { dirname } from 'node:path'
 import { log } from 'node:console'
 
 import type { Request } from 'express'
@@ -20,7 +20,7 @@ import {
   TWITTER_CONSUMER_KEY,
   TWITTER_CONSUMER_SECRET,
 } from './env.js'
-import { TwitterApi } from 'twitter-api-v2'
+import { fileURLToPath } from 'node:url'
 
 const port = 5432
 const server_url = `http://localhost:${port}`
@@ -36,7 +36,9 @@ server.use(
   })
 )
 server.use(express.json({ limit: '10mb' }))
-server.use(express.static(path.join(__dirname, 'ui')))
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+server.use(express.static(path.join(__dirname, '../ui')))
 
 let once = false
 server.get('/', (_, res) => {
